@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        Enhanced Jira Features
-// @version     2.6.8
+// @version     2.6.9
 // @author      ISD BH Schogol, ISD Tulwar
 // @description Adds a Translate, Assign to GM, Convert to Defect and Close button to Jira and also parses Log Files submitted from the EVE client
 // @updateURL   https://github.com/Schogol/Enhanced-Jira/raw/main/Enhanced%20Jira%20Features.user.js
@@ -331,10 +331,10 @@ function addButtons() {
     var issueID = $('a[data-testid="issue.views.issue-base.foundation.breadcrumbs.current-issue.item"]').text();
 
     // Grabbing the button and span class for the buttons (which constantly changes because react + atlassian ~_~)
-    let buttonClass = $('button[data-testid="issue-view-foundation.quick-add.quick-add-items-compact.apps-button-dropdown--trigger"]').attr('class');
-    let innerSpanClass = $('button[data-testid="issue-view-foundation.quick-add.quick-add-items-compact.apps-button-dropdown--trigger"]').find('span').eq(0).attr('class');
-    let iconSpanClass = $('button[data-testid="issue-view-foundation.quick-add.quick-add-items-compact.apps-button-dropdown--trigger"]').find('span').eq(1).attr('class');
-    let labelSpanClass = $('button[data-testid="issue-view-foundation.quick-add.quick-add-items-compact.apps-button-dropdown--trigger"]').find('span').eq(2).attr('class');
+    let buttonClass = $('button span:contains("Summarize work item")').closest('button').attr('class');
+    let innerSpanClass = $('button span:contains("Summarize work item")').closest('button').find('span').eq(0).attr('class');
+    let iconSpanClass = $('button span:contains("Summarize work item")').closest('button').find('span').eq(1).attr('class');
+    let labelSpanClass = $('button span:contains("Summarize work item")').closest('button').find('span').eq(2).attr('class');
 
     // Jira cloud ID which we need for some of the POST requests we send
     let ajscloudid = $('meta[name="ajs-cloud-id"]').attr('content');
@@ -345,11 +345,10 @@ if ($('#translateButton').length === 0) {
   var translateButton = $(
     '<button id="translateButton" type="button" tabindex="1" class="' + buttonClass + '" ' +
     'style="margin-left: 8px; width: fit-content; padding: 6px 12px; white-space: nowrap; display: inline-flex; align-items: center;">' +
-    '<span class="' + innerSpanClass + '"></span>' +
     '<span style="font-size: 13px;">Translate</span>' +
     '</button>'
     );
-    $('button[data-testid="issue-view-foundation.quick-add.quick-add-items-compact.apps-button-dropdown--trigger"]').after(translateButton);
+    $('button span:contains("Summarize work item")').closest('button').after(translateButton);
     }
 
     // When the translate button is clicked we send the Issue title, description and reproduction steps to the Google translate API and change the original content to what we receive back from the API
@@ -385,11 +384,10 @@ if ($('#GMButton').length === 0) {
   var GMButton = $(
     '<button id="GMButton" aria-label="GMButton" class="' + buttonClass + '" type="button" tabindex="1" ' +
     'style="margin-left: 8px; width: fit-content; padding: 6px 12px; white-space: nowrap; display: inline-flex; align-items: center;">' +
-    '<span class="' + innerSpanClass + '"></span>' +
     '<span style="font-size: 13px;">Assign to GM</span>' +
     '</button>'
     );
-    $('button[data-testid="issue-view-foundation.quick-add.quick-add-items-compact.apps-button-dropdown--trigger"]').after(GMButton);
+    $('button span:contains("Summarize work item")').closest('button').after(GMButton);
     }
 
     // When the Assign to GM button is clicked we change the Team to "EO - Game Masters" and also visually change the field so the user sees that it worked.
@@ -440,11 +438,10 @@ if ($('#convertToDefectButton').length === 0) {
   var convertToDefectButton = $(
     '<button id="convertToDefectButton" aria-label="ConvertToDefect" class="' + buttonClass + '" type="button" tabindex="0" ' +
     'style="margin-left: 8px; width: fit-content; padding: 6px 12px; white-space: nowrap; display: inline-flex; align-items: center;">' +
-    '<span class="' + innerSpanClass + '"></span>' +
     '<span style="font-size: 13px;">Convert to Defect</span>' +
     '</button>'
     );
-    $('button[data-testid="issue-view-foundation.quick-add.quick-add-items-compact.apps-button-dropdown--trigger"]').after(convertToDefectButton);
+    $('button span:contains("Summarize work item")').closest('button').after(convertToDefectButton);
     }
     // When the Convert to Defect button is clicked we trigger the Automation which converts the EBR into an EDR issue
     $("#convertToDefectButton").click(function () {
@@ -493,18 +490,27 @@ if ($('#closeButton').length === 0) {
   var closeButton = $(
     '<button id="closeButton" aria-label="Close Button" class="' + buttonClass + '" type="button" tabindex="1" ' +
     'style="margin-left: 8px; width: fit-content; padding: 6px 12px; white-space: nowrap; display: inline-flex; align-items: center;">' +
-    '<span class="' + innerSpanClass + '"></span>' +
     '<span style="font-size: 13px;">Close</span>' +
     '</button>'
     );
-    $('button[data-testid="issue-view-foundation.quick-add.quick-add-items-compact.apps-button-dropdown--trigger"]').after(closeButton);
+    $('button span:contains("Summarize work item")').closest('button').after(closeButton);
     }
     // When the Close button is clicked we change the status to Closed by simulating clicks on the relevant buttons. This is extremely janky right now because I cant figure out a better way to do this.
     $("#closeButton").click(function () {
         $("div[data-testid='issue.views.issue-base.foundation.status.status-field-wrapper']").find("button").click()
         setTimeout(function(){$("div[data-testid='issue.fields.status.common.ui.status-lozenge.3']").children().find("span:contains(Closed)").click();}, 100);
     });
+// Test if the TranslateButton is present every 2 seconds, if not re-start addButtons(), until we can figure out a way to do MutationObserver properly (?)
+setInterval(() => {
+    if (savedVariables[4][1] &&
+        $('a[data-testid*="breadcrumbs.current-issue.item"]:contains("EBR")').length > 0 &&
+        $('#translateButton').length === 0) {
+        addButtons();
+    }
+}, 2000);
 };
+
+
 
 
 // Adds the "toggleText()" function to jQuery which lets you easily toggle between two given texts
